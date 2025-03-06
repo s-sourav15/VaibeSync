@@ -10,15 +10,15 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  Image
+  Image,
+  TextInput
 } from 'react-native';
 import { SafeScreen } from '../../components/layout/SafeScreen';
 import CustomInput from '../../components/inputs/CustomInput';
 import CustomButton from '../../components/buttons/CustomButton';
 import Icon from 'react-native-vector-icons/Ionicons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
+import { useActivities } from '../../context/ActivityContext';
 import { showNetworkErrorIfOffline } from '../../utils/network';
 
 // Categories for dropdown
@@ -35,34 +35,74 @@ const CATEGORIES = [
   'Other'
 ];
 
+// Simple date input handler
+const DateTimeInputField = ({ label, value, onChange, error }) => {
+  // Split date and time values
+  const [date, setDate] = useState(value ? value.split('T')[0] : '');
+  const [time, setTime] = useState(value ? value.split('T')[1].substring(0, 5) : '');
+
+  // Handle date change
+  const handleDateChange = (text) => {
+    setDate(text);
+    if (time) {
+      onChange(`${text}T${time}:00`);
+    }
+  };
+
+  // Handle time change
+  const handleTimeChange = (text) => {
+    setTime(text);
+    if (date) {
+      onChange(`${date}T${text}:00`);
+    }
+  };
+
+  return (
+    <View style={styles.fieldContainer}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.dateTimeContainer}>
+        <View style={styles.dateInputContainer}>
+          <Text style={styles.dateTimeLabel}>Date (YYYY-MM-DD)</Text>
+          <TextInput
+            style={[styles.dateTimeInput, error && styles.inputError]}
+            placeholder="2025-03-15"
+            value={date}
+            onChangeText={handleDateChange}
+          />
+        </View>
+        <View style={styles.timeInputContainer}>
+          <Text style={styles.dateTimeLabel}>Time (HH:MM)</Text>
+          <TextInput
+            style={[styles.dateTimeInput, error && styles.inputError]}
+            placeholder="14:30"
+            value={time}
+            onChangeText={handleTimeChange}
+          />
+        </View>
+      </View>
+      {error && <Text style={styles.errorText}>{error}</Text>}
+      <Text style={styles.helperText}>
+        Format example: 2025-03-15 at 14:30
+      </Text>
+    </View>
+  );
+};
+
 const CreateActivityScreen = ({ navigation }) => {
   const { currentUser } = useAuth();
+  const { createActivity } = useActivities(); // Use the context
   const [loading, setLoading] = useState(false);
   const [activity, setActivity] = useState({
     title: '',
     description: '',
     location: '',
     category: '',
-    date: new Date(),
+    date: new Date().toISOString().split('.')[0],
     maxParticipants: '10',
-    imageUri: null,
+    imageUrl: 'https://source.unsplash.com/random/400x300/?activity', // Default image for now
   });
   const [errors, setErrors] = useState({});
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-
-  // Format date for display
-  const formattedDate = activity.date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-  
-  const formattedTime = activity.date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 
   // Handle category selection
   const handleCategorySelect = (category) => {
@@ -72,45 +112,26 @@ const CreateActivityScreen = ({ navigation }) => {
   };
 
   // Handle date change
-  const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      setActivity({ ...activity, date: selectedDate });
-    }
+  const handleDateChange = (dateString) => {
+    setActivity({ ...activity, date: dateString });
+    setErrors({ ...errors, date: '' });
   };
 
   // Handle image selection
   const handleSelectImage = async () => {
-    try {
-      // Request permissions
-      if (Platform.OS !== 'web') {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert(
-            'Permission Required',
-            'Sorry, we need camera roll permissions to upload an image.',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
-      }
-      
-      // Launch image picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [16, 9],
-        quality: 0.7,
-      });
-      
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setActivity({ ...activity, imageUri: result.assets[0].uri });
-        setErrors({ ...errors, image: '' });
-      }
-    } catch (error) {
-      console.error('Error selecting image:', error);
-      Alert.alert('Error', 'Failed to select image. Please try again.');
-    }
+    Alert.alert(
+      'Image Upload',
+      'To enable image upload, please install react-native-image-picker',
+      [{ text: 'OK' }]
+    );
+    
+    // Since we can't actually upload images yet, let's just set a random image
+    const categories = ['fitness', 'hiking', 'sports', 'education', 'art', 'social', 'tech', 'food', 'music'];
+    const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+    setActivity({
+      ...activity,
+      imageUrl: `https://source.unsplash.com/random/400x300/?${randomCategory}`
+    });
   };
 
   // Validate form
@@ -139,13 +160,16 @@ const CreateActivityScreen = ({ navigation }) => {
       newErrors.maxParticipants = 'Please enter a valid number';
     }
     
-    if (!activity.imageUri) {
-      newErrors.image = 'Please upload an image for your activity';
-    }
-    
-    // Check if date is in the future
-    if (activity.date < new Date()) {
-      newErrors.date = 'Please select a future date and time';
+    // Check if date is valid
+    try {
+      const dateObj = new Date(activity.date);
+      if (isNaN(dateObj.getTime())) {
+        newErrors.date = 'Please enter a valid date and time';
+      } else if (dateObj < new Date()) {
+        newErrors.date = 'Please select a future date and time';
+      }
+    } catch (e) {
+      newErrors.date = 'Please enter a valid date and time';
     }
     
     setErrors(newErrors);
@@ -165,23 +189,29 @@ const CreateActivityScreen = ({ navigation }) => {
     try {
       setLoading(true);
       
-      // For now, just simulate creating an activity
-      // In a real app, you would upload the image to Firebase Storage,
-      // then create the activity document in Firestore
+      // Create activity data
+      const activityData = {
+        ...activity,
+        maxParticipants: parseInt(activity.maxParticipants),
+        hostId: currentUser?.uid,
+        hostName: currentUser?.displayName || 'User',
+        hostPhotoURL: currentUser?.photoURL,
+      };
       
-      setTimeout(() => {
-        setLoading(false);
-        Alert.alert(
-          'Success',
-          'Your activity has been created!',
-          [
-            { 
-              text: 'OK', 
-              onPress: () => navigation.navigate('Home')
-            }
-          ]
-        );
-      }, 2000);
+      // Use the context to create the activity
+      await createActivity(activityData);
+      
+      setLoading(false);
+      Alert.alert(
+        'Success',
+        'Your activity has been created!',
+        [
+          { 
+            text: 'OK', 
+            onPress: () => navigation.navigate('HomeMain')
+          }
+        ]
+      );
       
     } catch (error) {
       console.error('Error creating activity:', error);
@@ -217,9 +247,9 @@ const CreateActivityScreen = ({ navigation }) => {
               style={styles.imageUploader}
               onPress={handleSelectImage}
             >
-              {activity.imageUri ? (
+              {activity.imageUrl ? (
                 <Image
-                  source={{ uri: activity.imageUri }}
+                  source={{ uri: activity.imageUrl }}
                   style={styles.previewImage}
                 />
               ) : (
@@ -303,29 +333,12 @@ const CreateActivityScreen = ({ navigation }) => {
             </View>
             
             {/* Date and Time */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Date and Time</Text>
-              <TouchableOpacity
-                style={[styles.dateButton, errors.date && styles.inputError]}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Icon name="calendar-outline" size={20} color="#6366f1" style={styles.dateIcon} />
-                <Text style={styles.dateText}>
-                  {formattedDate} at {formattedTime}
-                </Text>
-              </TouchableOpacity>
-              {errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
-              
-              {showDatePicker && (
-                <DateTimePicker
-                  value={activity.date}
-                  mode="datetime"
-                  display="default"
-                  onChange={handleDateChange}
-                  minimumDate={new Date()}
-                />
-              )}
-            </View>
+            <DateTimeInputField 
+              label="Date and Time"
+              value={activity.date}
+              onChange={handleDateChange}
+              error={errors.date}
+            />
             
             {/* Max Participants */}
             <CustomInput
@@ -445,6 +458,37 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e4e4e7',
   },
+  dateTimeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dateInputContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
+  timeInputContainer: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  dateTimeLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  dateTimeInput: {
+    backgroundColor: '#f4f4f5',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#e4e4e7',
+    fontSize: 16,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
   inputError: {
     borderColor: '#ef4444',
   },
@@ -474,23 +518,6 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f1f5f9',
   },
   dropdownItemText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  dateButton: {
-    backgroundColor: '#f4f4f5',
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e4e4e7',
-  },
-  dateIcon: {
-    marginRight: 8,
-  },
-  dateText: {
     fontSize: 16,
     color: '#333',
   },

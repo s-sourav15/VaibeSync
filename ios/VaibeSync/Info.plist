@@ -74,6 +74,10 @@
     <key>UIUserInterfaceStyle</key>
     <string>Automatic</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>$(VaibeSync) would like to access your photo library</string>
+    <key>NSCameraUsageDescription</key>
+    <string>$(VaibeSync) would like to access your camera</string>
     <false/>
   </dict>
 </plist>
