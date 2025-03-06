@@ -1,50 +1,153 @@
-# Welcome to your Expo app 👋
+# Vaibe.Sync
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A React Native mobile application that helps users find and connect with others who share similar activity interests with the goal find your partner and not just date.
 
-## Get started
 
-1. Install dependencies
+## Features
 
-   ```bash
-   npm install
-   ```
+- **User Authentication**: Secure login, signup, and password recovery
+- **Activity Matching**: Find users with similar activity interests
+- **Real-time Chat**: Connect and chat with matched users
+- **User Profiles**: Customize profiles with interests and personal information
+- **Offline Support**: Basic functionality when offline
 
-2. Start the app
+## Project Structure
 
-   ```bash
-    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+/
+├── src/
+│   ├── components/     # Reusable UI components
+│   ├── config/         # Configuration files
+│   ├── context/        # React Context providers
+│   ├── navigation/     # Navigation configuration
+│   ├── screens/        # App screens
+│   │   ├── auth/       # Authentication screens
+│   │   ├── main/       # Main app screens
+│   │   └── onboarding/ # Onboarding screens
+│   ├── services/       # API and Firebase services
+│   ├── styles/         # Shared styles
+│   └── utils/          # Utility functions
+└── App.js              # Entry point
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Tech Stack
 
-## Learn more
+- **React Native**: Cross-platform mobile framework
+- **Expo**: Development platform and toolchain
+- **Firebase**: Authentication and database
+- **React Navigation**: Screen navigation
+- **Firestore**: Cloud database for user data
+- **React Native Vector Icons**: UI icons
 
-To learn more about developing your project with Expo, look at the following resources:
+## Getting Started
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Prerequisites
 
-## Join the community
+- Node.js (v14 or newer)
+- npm or yarn
+- Expo CLI
+- Expo Go app on your iOS or Android device for testing
 
-Join our community of developers creating universal apps.
+### Installation
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/activity-match.git
+   cd activity-match
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
+
+3. Set up Firebase:
+   - Create a Firebase project at [firebase.google.com](https://firebase.google.com)
+   - Enable Authentication with Email/Password
+   - Create a Firestore database
+   - Add your Firebase configuration to `src/config/firebase.js`
+
+4. Run the app with Expo:
+   ```bash
+   npx expo start
+   ```
+   
+5. Open the app:
+   - Scan the QR code with the Expo Go app on your device
+   - Press 'i' for iOS simulator or 'a' for Android emulator (if configured)
+   - Press 'w' to open in web browser
+
+## Development
+
+### Environment Setup
+
+For Expo projects, create an `app.config.js` file to manage environment variables:
+
+```javascript
+export default {
+  expo: {
+    name: "ActivityMatch",
+    slug: "activity-match",
+    // ... other expo config
+    extra: {
+      firebaseApiKey: process.env.FIREBASE_API_KEY,
+      firebaseAuthDomain: process.env.FIREBASE_AUTH_DOMAIN,
+      firebaseProjectId: process.env.FIREBASE_PROJECT_ID,
+      firebaseStorageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+      firebaseMessagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+      firebaseAppId: process.env.FIREBASE_APP_ID,
+    },
+  },
+};
+```
+
+Then create a `.env` file in the project root with:
+```
+FIREBASE_API_KEY=your_firebase_api_key
+FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
+FIREBASE_PROJECT_ID=your_firebase_project_id
+FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
+FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id
+FIREBASE_APP_ID=your_firebase_app_id
+```
+
+### Firebase Configuration
+
+Replace the placeholder values in `src/config/firebase.js` with your own Firebase project configuration:
+
+```javascript
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+```
+
+## Authentication Flow
+
+1. Users start at the Welcome screen
+2. They can sign up with email and password
+3. After authentication, they're directed to the main app
+4. User sessions persist until they log out
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+
+
+## Acknowledgements
+
+- [React Native](https://reactnative.dev/)
+- [Expo](https://expo.dev/)
+- [Firebase](https://firebase.google.com/)
+- [React Navigation](https://reactnavigation.org/)
