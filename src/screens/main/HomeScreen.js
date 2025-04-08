@@ -15,40 +15,8 @@ import { SafeScreen } from '../../components/layout/SafeScreen';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNetworkStatus } from '../../utils/network';
 import { useActivities } from '../../context/ActivityContext';
-
-// Export mock data so it can be used by the context
-export const MOCK_ACTIVITIES = [
-  {
-    id: '1',
-    title: 'Morning Yoga',
-    category: 'Fitness',
-    location: 'Central Park',
-    date: '2025-03-10T08:00:00',
-    description: 'Join us for a refreshing morning yoga session at Central Park. This class is suitable for all levels, from beginners to advanced practitioners. We"ll focus on gentle stretches, breathing techniques, and mindfulness to start your day with positive energy. Please bring your own mat and water bottle.',
-    imageUrl: 'https://source.unsplash.com/random/400x300/?yoga',
-    maxParticipants: 15,
-    currentParticipants: 8,
-    participants: [
-      {
-        id: 'user1',
-        name: 'Sarah Johnson',
-        photoURL: 'https://source.unsplash.com/random/100x100/?portrait,woman',
-      },
-      {
-        id: 'user2',
-        name: 'Michael Chen',
-        photoURL: 'https://source.unsplash.com/random/100x100/?portrait,man',
-      }
-    ],
-    host: {
-      id: 'host1',
-      name: 'Emma Wilson',
-      photoURL: 'https://source.unsplash.com/random/100x100/?portrait,woman',
-    }
-  },
-  // Other mock activities (unchanged)
-  // ...
-];
+import { useRecommendations } from '../../context/RecommendationContext';
+import CustomButton from '../../components/buttons/CustomButton';
 
 // Filter categories
 const CATEGORIES = [
@@ -65,7 +33,9 @@ const CATEGORIES = [
 ];
 
 // Activity Card Component
-const ActivityCard = ({ activity, onPress }) => {
+const ActivityCard = ({ activity, onPress, showMatchScore = false }) => {
+  if (!activity) return null;
+  
   const date = new Date(activity.date);
   const formattedDate = date.toLocaleDateString('en-US', {
     month: 'short',
@@ -78,6 +48,10 @@ const ActivityCard = ({ activity, onPress }) => {
     minute: '2-digit'
   });
 
+  // Format similarity score as percentage if available
+  const similarityPercent = activity.similarity ? 
+    Math.round(activity.similarity * 100) : null;
+
   return (
     <TouchableOpacity 
       style={styles.cardContainer} 
@@ -85,25 +59,36 @@ const ActivityCard = ({ activity, onPress }) => {
       activeOpacity={0.7}
     >
       <Image 
-        source={{ uri: activity.imageUrl }} 
+        source={{ uri: activity?.imageUrl }} 
         style={styles.cardImage}
         defaultSource={require('../../assets/placeholder.png')}
       />
       
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardCategory}>{activity.category}</Text>
+          <Text style={styles.cardCategory}>{activity?.category || 'Uncategorized'}</Text>
           <View style={styles.participantsContainer}>
-            <Icon name="people" size={14} color="#666" />
-            <Text style={styles.cardParticipants}> {activity.currentParticipants}/{activity.maxParticipants}</Text>
+            {showMatchScore && similarityPercent ? (
+              <View style={styles.matchScoreContainer}>
+                <Icon name="flash" size={14} color="#6366f1" />
+                <Text style={styles.matchScoreText}>{similarityPercent}% Match</Text>
+              </View>
+            ) : (
+              <>
+                <Icon name="people" size={14} color="#666" />
+                <Text style={styles.cardParticipants}> 
+                  {activity?.currentParticipants || 0}/{activity?.maxParticipants || 0}
+                </Text>
+              </>
+            )}
           </View>
         </View>
         
-        <Text style={styles.cardTitle}>{activity.title}</Text>
+        <Text style={styles.cardTitle}>{activity?.title || 'Untitled Activity'}</Text>
         
         <View style={styles.cardDetail}>
           <Icon name="location" size={16} color="#6366f1" />
-          <Text style={styles.cardDetailText}>{activity.location}</Text>
+          <Text style={styles.cardDetailText}>{activity?.location || 'No location'}</Text>
         </View>
         
         <View style={styles.cardDetail}>
@@ -113,15 +98,28 @@ const ActivityCard = ({ activity, onPress }) => {
         
         <View style={styles.hostContainer}>
           <Image 
-            source={{ uri: activity.host.photoURL }} 
+            source={{ uri: activity?.host?.photoURL || 'https://source.unsplash.com/random/100x100/?portrait' }} 
             style={styles.hostImage}
+            defaultSource={require('../../assets/placeholder.png')}
           />
-          <Text style={styles.hostName}>Hosted by {activity.host.name}</Text>
+          <Text style={styles.hostName}>Hosted by {activity?.host?.name || 'Unknown Host'}</Text>
         </View>
       </View>
     </TouchableOpacity>
   );
 };
+
+// Section Header Component
+const SectionHeader = ({ title, onSeeAllPress, buttonTitle = 'See All' }) => (
+  <View style={styles.sectionHeader}>
+    <Text style={styles.sectionTitle}>{title}</Text>
+    {onSeeAllPress && (
+      <TouchableOpacity onPress={onSeeAllPress}>
+        <Text style={styles.seeAllButton}>{buttonTitle}</Text>
+      </TouchableOpacity>
+    )}
+  </View>
+);
 
 // Category Filter Component
 const CategoryFilter = ({ categories, selectedCategory, onSelectCategory }) => {
@@ -130,7 +128,7 @@ const CategoryFilter = ({ categories, selectedCategory, onSelectCategory }) => {
       <FlatList
         horizontal
         data={categories}
-        keyExtractor={(item) => item}
+        keyExtractor={(item, index) => `category-${item}-${index}`}
         showsHorizontalScrollIndicator={false}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -156,63 +154,134 @@ const CategoryFilter = ({ categories, selectedCategory, onSelectCategory }) => {
   );
 };
 
+// Natural Language Input Component
+const NaturalLanguageInput = ({ onSubmit, loading }) => {
+  const [text, setText] = useState('');
+  
+  const handleSubmit = () => {
+    if (text.trim()) {
+      onSubmit(text);
+      setText(''); // Clear input after submit
+    }
+  };
+  
+  return (
+    <View style={styles.nlInputContainer}>
+      <TextInput
+        style={styles.nlInput}
+        placeholder="Describe what you're looking for..."
+        value={text}
+        onChangeText={setText}
+        multiline
+        numberOfLines={2}
+        textAlignVertical="top"
+        returnKeyType="done"
+      />
+      <CustomButton
+        title={loading ? "Finding..." : "Find Activities"}
+        onPress={handleSubmit}
+        style={styles.nlSubmitButton}
+        disabled={!text.trim() || loading}
+      />
+    </View>
+  );
+};
+
 // Main HomeScreen Component
 const HomeScreen = ({ navigation }) => {
-  // Use activities from context instead of local state
-  const { activities, loading: contextLoading } = useActivities();
+  // Get activities from context
+  const { activities, loading: activitiesLoading } = useActivities();
+  
+  // Get recommendations from context
+  const { 
+    recommendedActivities, 
+    loading: recommendationsLoading,
+    fetchRecommendedActivities,
+    searchActivitiesByText
+  } = useRecommendations();
+  
   const [filteredActivities, setFilteredActivities] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [nlResults, setNlResults] = useState([]);
+  const [nlLoading, setNlLoading] = useState(false);
+  const [showNlResults, setShowNlResults] = useState(false);
   const { isConnected } = useNetworkStatus();
 
-  // Update loading state when context loading changes
+  // Filter activities based on selected category
   useEffect(() => {
-    setLoading(contextLoading);
-  }, [contextLoading]);
-
-  // Handle refresh - no longer need our own fetch function
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    // We would re-fetch from the context here in a real app
-    // For now, just wait a second to simulate refresh
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
-  };
-
-  // Filter activities based on selected category and search query
-  useEffect(() => {
-    let result = activities;
+    if (!activities || activities.length === 0) {
+      setFilteredActivities([]);
+      return;
+    }
+    
+    let result = [...activities];
     
     // Filter by category
     if (selectedCategory !== 'All') {
-      result = result.filter(activity => activity.category === selectedCategory);
+      result = result.filter(activity => activity?.category === selectedCategory);
     }
     
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(activity => 
-        activity.title.toLowerCase().includes(query) ||
-        activity.description.toLowerCase().includes(query) ||
-        activity.location.toLowerCase().includes(query) ||
-        activity.category.toLowerCase().includes(query)
+        (activity?.title || '').toLowerCase().includes(query) ||
+        (activity?.description || '').toLowerCase().includes(query) ||
+        (activity?.location || '').toLowerCase().includes(query) ||
+        (activity?.category || '').toLowerCase().includes(query)
       );
     }
     
     setFilteredActivities(result);
   }, [selectedCategory, searchQuery, activities]);
 
+  // Handle refresh
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    
+    try {
+      // Refresh recommendations
+      await fetchRecommendedActivities();
+      
+      // Reset UI state
+      setShowNlResults(false);
+      setNlResults([]);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchRecommendedActivities]);
+
   // Handle activity press - Navigate to activity details
   const handleActivityPress = (activity) => {
-    navigation.navigate('ActivityDetails', { activityId: activity.id });
+    if (activity && activity.id) {
+      navigation.navigate('ActivityDetails', { activityId: activity.id });
+    }
   };
 
   // Handle category selection
   const handleCategorySelect = (category) => {
     setSelectedCategory(category);
+  };
+
+  // Handle natural language search
+  const handleNaturalLanguageSearch = async (text) => {
+    if (!text.trim()) return;
+    
+    setNlLoading(true);
+    
+    try {
+      const results = await searchActivitiesByText(text);
+      setNlResults(results);
+      setShowNlResults(true);
+    } catch (error) {
+      console.error('Error with natural language search:', error);
+    } finally {
+      setNlLoading(false);
+    }
   };
 
   // Navigate to create activity screen
@@ -226,7 +295,8 @@ const HomeScreen = ({ navigation }) => {
   };
 
   // Loading state
-  if (loading && !refreshing) {
+  const isLoading = (activitiesLoading || recommendationsLoading) && !refreshing;
+  if (isLoading) {
     return (
       <SafeScreen>
         <View style={styles.loadingContainer}>
@@ -236,6 +306,46 @@ const HomeScreen = ({ navigation }) => {
       </SafeScreen>
     );
   }
+
+  // Render recommended activities section
+  const renderRecommendedSection = () => {
+    if (recommendedActivities.length === 0) {
+      return (
+        <View style={styles.emptyRecommendationsContainer}>
+          <Text style={styles.emptyRecommendationsText}>
+            No personalized recommendations available yet.
+          </Text>
+          <TouchableOpacity 
+            style={styles.updateProfileButton}
+            onPress={() => navigation.navigate('EditProfile')}
+          >
+            <Text style={styles.updateProfileButtonText}>
+              Complete your profile to get recommendations
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    
+    return (
+      <FlatList
+        horizontal
+        data={recommendedActivities}
+        keyExtractor={(item) => `recommended-${item.id}`}
+        renderItem={({ item }) => (
+          <View style={styles.recommendedCard}>
+            <ActivityCard
+              activity={item}
+              onPress={handleActivityPress}
+              showMatchScore={true}
+            />
+          </View>
+        )}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.recommendedList}
+      />
+    );
+  };
 
   return (
     <SafeScreen>
@@ -252,60 +362,106 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
         
-        {/* Search bar */}
-        <View style={styles.searchContainer}>
-          <Icon name="search" size={20} color="#666" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search activities..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-          />
-          {searchQuery ? (
-            <TouchableOpacity 
-              style={styles.clearButton}
-              onPress={handleClearSearch}
-            >
-              <Icon name="close-circle" size={20} color="#666" />
-            </TouchableOpacity>
-          ) : null}
-        </View>
-        
-        {/* Category filter */}
-        <CategoryFilter 
-          categories={CATEGORIES}
-          selectedCategory={selectedCategory}
-          onSelectCategory={handleCategorySelect}
+        {/* Natural language input */}
+        <NaturalLanguageInput 
+          onSubmit={handleNaturalLanguageSearch}
+          loading={nlLoading}
         />
-        
-        {/* Offline notice */}
-        {!isConnected && (
-          <View style={styles.offlineNotice}>
-            <Icon name="cloud-offline" size={18} color="#fff" />
-            <Text style={styles.offlineText}>You are offline. Some content may be unavailable.</Text>
-          </View>
-        )}
-        
-        {/* Activity list or empty state */}
-        {filteredActivities.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Icon name="calendar-outline" size={60} color="#ccc" />
-            <Text style={styles.emptyText}>No activities found</Text>
-            <Text style={styles.emptySubText}>
-              {searchQuery 
-                ? "Try a different search term or category" 
-                : "Check back later for new activities"}
-            </Text>
+
+        {/* Main content */}
+        {showNlResults ? (
+          // Show natural language search results
+          <View style={styles.nlResultsContainer}>
+            <View style={styles.nlResultsHeader}>
+              <Text style={styles.nlResultsTitle}>Search Results</Text>
+              <TouchableOpacity 
+                style={styles.backButton}
+                onPress={() => setShowNlResults(false)}
+              >
+                <Text style={styles.backButtonText}>Back</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <FlatList
+              data={nlResults}
+              keyExtractor={(item) => `nl-${item.id}`}
+              renderItem={({ item }) => (
+                <ActivityCard 
+                  activity={item} 
+                  onPress={handleActivityPress}
+                  showMatchScore={true}
+                />
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Icon name="search-outline" size={60} color="#ccc" />
+                  <Text style={styles.emptyText}>No matching activities found</Text>
+                  <Text style={styles.emptySubText}>
+                    Try a different description or browse available activities
+                  </Text>
+                </View>
+              }
+              contentContainerStyle={styles.listContent}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  colors={['#6366f1']}
+                  tintColor="#6366f1"
+                />
+              }
+            />
           </View>
         ) : (
+          // Show regular home screen content
           <FlatList
             data={filteredActivities}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => `activity-${item.id}`}
             renderItem={({ item }) => (
               <ActivityCard activity={item} onPress={handleActivityPress} />
             )}
+            ListHeaderComponent={
+              <>
+                {/* Offline notice */}
+                {!isConnected && (
+                  <View style={styles.offlineNotice}>
+                    <Icon name="cloud-offline" size={18} color="#fff" />
+                    <Text style={styles.offlineText}>
+                      You are offline. Some content may be unavailable.
+                    </Text>
+                  </View>
+                )}
+                
+                {/* Recommended activities section */}
+                <SectionHeader 
+                  title="Recommended for You" 
+                  onSeeAllPress={() => navigation.navigate('Recommendations')}
+                />
+                
+                {renderRecommendedSection()}
+                
+                {/* Browse categories section */}
+                <SectionHeader title="Browse Activities" />
+                
+                {/* Category filter */}
+                <CategoryFilter 
+                  categories={CATEGORIES}
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={handleCategorySelect}
+                />
+              </>
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Icon name="calendar-outline" size={60} color="#ccc" />
+                <Text style={styles.emptyText}>No activities found</Text>
+                <Text style={styles.emptySubText}>
+                  {searchQuery 
+                    ? "Try a different search term or category" 
+                    : "Check back later for new activities"}
+                </Text>
+              </View>
+            }
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             initialNumToRender={5}
@@ -327,9 +483,7 @@ const HomeScreen = ({ navigation }) => {
   );
 };
 
-// Styles remain the same
 const styles = StyleSheet.create({
-  // All the styles from before
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
@@ -391,28 +545,30 @@ const styles = StyleSheet.create({
   categoryButtonTextSelected: {
     color: '#fff',
   },
-  searchContainer: {
+  sectionHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    marginHorizontal: 16,
-    paddingHorizontal: 12,
-    marginVertical: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    fontSize: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#333',
   },
-  clearButton: {
-    padding: 4,
+  seeAllButton: {
+    color: '#6366f1',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  recommendedList: {
+    paddingHorizontal: 8,
+    paddingBottom: 16,
+  },
+  recommendedCard: {
+    width: 280,
+    marginHorizontal: 8,
   },
   listContent: {
     paddingHorizontal: 16,
@@ -422,7 +578,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     overflow: 'hidden',
-    marginTop: 16,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -456,6 +612,20 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 14,
   },
+  matchScoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f9ff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  matchScoreText: {
+    color: '#6366f1',
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -485,6 +655,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     marginRight: 8,
+    backgroundColor: '#e5e7eb',
   },
   hostName: {
     fontSize: 14,
@@ -495,6 +666,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
+    marginTop: 60,
   },
   emptyText: {
     fontSize: 18,
@@ -521,6 +693,80 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     marginLeft: 8,
+  },
+  nlInputContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  nlInput: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginBottom: 12,
+  },
+  nlSubmitButton: {
+    backgroundColor: '#6366f1',
+  },
+  nlResultsContainer: {
+    flex: 1,
+  },
+  nlResultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  nlResultsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  backButton: {
+    padding: 8,
+  },
+  backButtonText: {
+    color: '#6366f1',
+    fontWeight: '500',
+  },
+  emptyRecommendationsContainer: {
+    backgroundColor: '#f9fafb',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  emptyRecommendationsText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  updateProfileButton: {
+    backgroundColor: '#e0e7ff',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  updateProfileButtonText: {
+    color: '#6366f1',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

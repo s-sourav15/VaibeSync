@@ -130,6 +130,7 @@
 //   );
 // }
 // App.js
+// App.js
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -144,6 +145,7 @@ import { TabNavigator } from './src/navigation/TabNavigator';
 // Import providers
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ActivityProvider } from './src/context/ActivityContext';
+import { RecommendationProvider } from './src/context/RecommendationContext';
 
 const Stack = createStackNavigator();
 
@@ -195,7 +197,9 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <ActivityProvider>
-          <RootNavigator />
+          <RecommendationProvider>
+            <RootNavigator />
+          </RecommendationProvider>
         </ActivityProvider>
       </AuthProvider>
     </SafeAreaProvider>

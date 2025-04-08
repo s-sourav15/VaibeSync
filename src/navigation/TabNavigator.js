@@ -12,11 +12,13 @@ import CreateActivityScreen from '../screens/main/CreateActivityScreen';
 import MatchesScreen from '../screens/main/MatchesScreen';
 import ChatScreen from '../screens/main/ChatScreen';
 import ProfileNavigator from './ProfileNavigator';
+import RecommendationsScreen from '../screens/main/RecommendationsScreen';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createStackNavigator();
 const MatchesStack = createStackNavigator();
 const ChatStack = createStackNavigator();
+const RecommendationsStack = createStackNavigator();
 
 // Home Stack
 const HomeStackNavigator = () => {
@@ -26,6 +28,16 @@ const HomeStackNavigator = () => {
       <HomeStack.Screen name="ActivityDetails" component={ActivityDetailsScreen} />
       <HomeStack.Screen name="CreateActivity" component={CreateActivityScreen} />
     </HomeStack.Navigator>
+  );
+};
+
+// Recommendations Stack
+const RecommendationsStackNavigator = () => {
+  return (
+    <RecommendationsStack.Navigator screenOptions={{ headerShown: false }}>
+      <RecommendationsStack.Screen name="RecommendationsMain" component={RecommendationsScreen} />
+      <RecommendationsStack.Screen name="ActivityDetails" component={ActivityDetailsScreen} />
+    </RecommendationsStack.Navigator>
   );
 };
 
@@ -65,6 +77,15 @@ export const TabNavigator = () => {
         options={{
           tabBarIcon: ({ color, size }) => (
             <Icon name="home-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Recommendations" 
+        component={RecommendationsStackNavigator}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="heart-outline" size={size} color={color} />
           ),
         }}
       />

@@ -30,10 +30,10 @@ const ActivityDetailsScreen = ({ route, navigation }) => {
     fetchActivityDetails();
   }, [activityId]);
 
-  const fetchActivityDetails = () => {
+  const fetchActivityDetails = async () => {
     try {
       setLoading(true);
-      const activityData = getActivityById(activityId);
+      const activityData = await getActivityById(activityId);
       
       if (activityData) {
         setActivity(activityData);
@@ -156,11 +156,12 @@ const ActivityDetailsScreen = ({ route, navigation }) => {
         <Image 
           source={{ uri: activity.imageUrl }} 
           style={styles.coverImage}
+          defaultSource={require('../../assets/placeholder.png')}
         />
         
         <View style={styles.content}>
           <View style={styles.categoryRow}>
-            <Text style={styles.category}>{activity.category}</Text>
+            <Text style={styles.category}>{activity?.category || 'Uncategorized'}</Text>
             <View style={styles.spotsContainer}>
               <Icon name="people-outline" size={16} color="#6366f1" />
               <Text style={styles.spotsText}>
@@ -171,7 +172,7 @@ const ActivityDetailsScreen = ({ route, navigation }) => {
             </View>
           </View>
           
-          <Text style={styles.title}>{activity.title}</Text>
+          <Text style={styles.title}>{activity?.title || 'Untitled Activity'}</Text>
           
           <View style={styles.infoRow}>
             <Icon name="calendar-outline" size={20} color="#6366f1" />
@@ -185,20 +186,21 @@ const ActivityDetailsScreen = ({ route, navigation }) => {
           
           <View style={styles.infoRow}>
             <Icon name="location-outline" size={20} color="#6366f1" />
-            <Text style={styles.infoText}>{activity.location}</Text>
+            <Text style={styles.infoText}>{activity?.location || 'Location not specified'}</Text>
           </View>
           
           <View style={styles.hostSection}>
             <Text style={styles.sectionTitle}>Host</Text>
             <View style={styles.hostRow}>
               <Image 
-                source={{ uri: activity.host.photoURL }} 
+                source={{ uri: activity?.host?.photoURL || 'https://source.unsplash.com/random/100x100/?portrait' }}
                 style={styles.hostImage}
+                defaultSource={require('../../assets/placeholder.png')}
               />
-              <Text style={styles.hostName}>{activity.host.name}</Text>
+              <Text style={styles.hostName}>{activity?.host?.name || 'Unknown Host'}</Text>
               <CustomButton 
                 title="Message" 
-                onPress={() => console.log('Message host')}
+                onPress={() => console.log('Message host', activity?.host?.id)}
                 style={styles.messageButton}
               />
             </View>
@@ -206,22 +208,27 @@ const ActivityDetailsScreen = ({ route, navigation }) => {
           
           <View style={styles.descriptionSection}>
             <Text style={styles.sectionTitle}>About This Activity</Text>
-            <Text style={styles.description}>{activity.description}</Text>
+            <Text style={styles.description}>{activity?.description || 'No description provided'}</Text>
           </View>
           
           <View style={styles.participantsSection}>
             <Text style={styles.sectionTitle}>
-              Participants ({activity.currentParticipants}/{activity.maxParticipants})
+              Participants ({activity?.currentParticipants || 0}/{activity?.maxParticipants || 0})
             </Text>
             <View style={styles.participantsList}>
-              {activity.participants && activity.participants.length > 0 ? (
-                activity.participants.map((participant, index) => (
-                  <View key={index} style={styles.participantItem}>
+              {activity?.participants && activity.participants.length > 0 ? (
+                activity.participants.map((participant) => (
+                  <View 
+                    // Use participant.id if available, or generate a unique key
+                    key={participant.id || `participant-${Math.random().toString(36).substring(2, 11)}`}
+                    style={styles.participantItem}
+                  >
                     <Image 
-                      source={{ uri: participant.photoURL }} 
+                      source={{ uri: participant?.photoURL || 'https://source.unsplash.com/random/100x100/?portrait' }} 
                       style={styles.participantImage}
+                      defaultSource={require('../../assets/placeholder.png')}
                     />
-                    <Text style={styles.participantName}>{participant.name}</Text>
+                    <Text style={styles.participantName}>{participant?.name || 'Anonymous'}</Text>
                   </View>
                 ))
               ) : (
@@ -367,6 +374,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginRight: 12,
+    backgroundColor: '#e5e7eb',
   },
   hostName: {
     fontSize: 16,
@@ -405,6 +413,7 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     marginRight: 10,
+    backgroundColor: '#e5e7eb',
   },
   participantName: {
     fontSize: 14,
