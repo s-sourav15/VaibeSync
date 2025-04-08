@@ -6,13 +6,13 @@ import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 
 // Exact config from Firebase console
 const firebaseConfig = {
-  apiKey: "AIzaSyAU3-0hTJnbai5gimzqaKDIYa0DWCY0jgM",
+  apiKey: "",
   authDomain: "vaibesync.firebaseapp.com",
   projectId: "vaibesync",
   storageBucket: "vaibesync.firebasestorage.app",
-  messagingSenderId: "815049374301",
-  appId: "1:815049374301:web:06257de8ebcd01a70cebb4",
-  measurementId: "G-9V6YW106LE"
+  messagingSenderId: "",
+  appId: "",
+  measurementId: "E"
 };
 
 // Initialize Firebase
