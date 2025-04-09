@@ -100,3 +100,4 @@ coverage/
 
 expo-env.d.ts
 # @end expo-cliserver/firebase-credentials.json
+server/firebase-credentials.json
