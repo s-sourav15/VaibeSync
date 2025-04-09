@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 import numpy as np
 from datetime import datetime
 import json
+from openai import OpenAI
 
 
 load_dotenv()
@@ -59,7 +60,8 @@ db = firestore.client()
 api_key = os.getenv('ANTHROPIC_API_KEY')
 if not api_key:
     raise ValueError('Anthropic API key not found')
-claude_client = Anthropic(api_key=api_key)
+claude_client = Anthropic(api_key='ANTHROPIC_API_KEY')
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 embedding_model = os.getenv('EMBEDDING_MODEL')
 
 
@@ -81,7 +83,8 @@ class BatchRequest(BaseModel):
 async def verify_firebase_token(authorization: str = Header(...)):
     if not authorization or not authorization.startswith('Bearer '):
         raise HTTPException(status_code=401, detail = 'Invalide authrorization header')
-    token = authorization.split('Bearer '[1])
+    token = authorization.split()[1]
+    # token = authorization.split('Bearer '[1])
 
     try:
         decoded_token = auth.verify_id_token(token)
@@ -95,9 +98,9 @@ def generate_embedding(text: str) -> List[float]:
     try:
         # The correct way to call embeddings with the latest Anthropic SDK
         #FIXME claude does not support embeddings --> move to openAI model for the tiem being
-        response = claude_client.embeddings.create(
-            model="claude-3-haiku-20240307",
-            input=text
+        response = openai_client.embeddings.create(
+            input=text,
+            model="text-embedding-ada-002"
         )
         return response.data[0].embedding
     except Exception as e:
@@ -430,9 +433,15 @@ async def generate_all_embeddings(
         
 
 
-@app.post("/recommendations/generate-embeddings-test")
+@app.post("/recommendations/generate-embeddings-test") #TODO remove this test code and move to the above generateembeddings whent the token issue is fixed
 async def generate_embeddings_test(background_tasks: BackgroundTasks):
     """Generate embeddings without authentication (for testing only)"""
+    userEmbeddings = db.collection('userEmbeddings').stream()
+    activityEmbeddings = db.collection('activityEmbeddings').stream()
+    if activityEmbeddings and userEmbeddings:
+        return {
+            'success': True
+        }
     try:
         # Process all users
         users = db.collection("users").stream()

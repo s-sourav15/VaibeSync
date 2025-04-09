@@ -37,12 +37,15 @@ class RecommendationService {
     try {
       const token = await this.getAuthToken();
       
-      // Print token for debugging (remove in production)
-      console.log('Token length:', token.length);
+      // Ensure token has no spaces or unexpected characters
+      const cleanToken = token.trim(); // Remove any leading/trailing whitespace
+      console.log('token here is : ', cleanToken)
+      console.log('Clean token length:', cleanToken.length);
+      console.log('First 10 characters of token:', cleanToken.substring(0, 10));
       
       return {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` // Make sure there are no spaces in the token string
+        'Authorization': 'Bearer ' + cleanToken // Ensure proper formatting
       };
     } catch (error) {
       console.error('Error getting headers:', error);
@@ -61,6 +64,9 @@ class RecommendationService {
     try {
       const headers = await this.getHeaders();
       
+      // Log the full Authorization header for debugging
+      console.log('Authorization header:', headers.Authorization);
+      
       console.log('Fetching recommendations from:', `${API_BASE_URL}/activities`);
       
       const response = await axios.post(
@@ -73,6 +79,7 @@ class RecommendationService {
       return response.data.results || [];
     } catch (error) {
       console.error('Error getting activity recommendations:', error);
+      console.error('Full error details:', error.response?.data || 'No response data');
       
       // Return empty array on error
       return [];
